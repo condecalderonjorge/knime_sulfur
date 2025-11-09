@@ -16,22 +16,21 @@ Construir un workflow **KNIME** que:
 
 ```
 knime-sulfur-news/
-├─ README.md                     # Este archivo
-├─ LICENSE                       # MIT por defecto (opcional)
+├─ README.md                    
+├─ LICENSE                       
 ├─ .gitignore
-├─ .gitattributes                # (opcional) Git LFS para ficheros grandes
 ├─ /workflows/
-│   ├─ sulfur_prices.knwf        # Workflow KNIME precios 
-│   └─ sulfur_news.knwf          # Workflow KNIME noticias 
+│   ├─ sulfur_prices.knwf        
+│   └─ sulfur_news.knwf          
 ├─ /data/
-│   ├─ raw/                      # Descargas originales (no versionar si son pesadas)
-│   ├─ interim/                  # Limpiezas intermedias
-│   └─ processed/                # Salidas finales (CSV/Parquet/JSON)
+│   ├─ raw/                     
+│   ├─ interim/                 
+│   └─ processed/              
 ├─ /docs/
-│   ├─ schema_prices.json        # Esquema de salida precios
-│   ├─ schema_news.json          # Esquema de salida noticias
-│   └─ screenshots/              # Capturas de workflows / ejemplos
-└─ /notebooks/                   # (opcional) Validaciones en Python/R
+│   ├─ schema_prices.json      
+│   ├─ schema_news.json          
+│   └─ screenshots/              
+└─ /notebooks/                  
 ```
 
 ---
@@ -46,7 +45,7 @@ knime-sulfur-news/
 
 ### Precios
 
-* `TODO:` URL/API principal para precios (p.ej. proveedor público, índice spot, base propia).
+* SunSirs: URL/API principal para precios (p.ej. proveedor público, índice spot, base propia).
 * Formato recomendado de salida (**schema_prices**):
 
 ```json
@@ -93,27 +92,42 @@ knime-sulfur-news/
 
 **Bloques:**
 
-1. **HTTP Retriever / CSV Reader / Excel Reader** → ingesta desde API/archivo.
-2. **String/Column Manipulation** → limpieza (trim, lower, parseo numérico).
-3. **Date&Time** → normalización de fecha a `YYYY-MM-DD` y *timezone*.
-4. **Missing Value** → imputación/descartes.
-5. **Rule Engine** → filtrar anómalos (negativos, outliers evidentes).
-6. **GroupBy / Window** → agregaciones (W/M) si procede.
-7. **Column Rename** → conformar esquema final.
-8. **CSV/Parquet Writer** → `/data/processed/sulfur_prices.csv`.
+1. **Web Interaction Start (Labs)** → inicializa la sesión de navegador (Selenium) para poder renderizar la página de SunSirs con JS.
+2. **Navigator (Labs)** → navega a la URL objetivo del azufre en SunSirs y espera la carga completa del contenido.
+3. **Content Retriever (Labs)** → captura el **HTML renderizado** (no sólo la fuente estática) para que el siguiente nodo pueda parsearlo.
+4. **XPath** → extrae **fecha** y **precio** del HTML a columnas tabulares (`date_raw`, `price_raw`).
+5. **String to Number** → convierte `price_raw` a tipo numérico (double), eliminando símbolos y separadores.
+6. **Column Filter** → conserva únicamente las columnas necesarias (fecha, precio y/o fuente) y descarta ruido.
+7. **String Manipulation** → limpia la fecha (trim, reemplazo de espacios no-break) y la normaliza a formato `yyyy-MM-dd` en una columna `date_clean`.
+8. **String to Date&Time** → convierte `date_clean` a tipo **Local Date** (`date`).
+9. **Column Resorter** → reordena columnas finales en el orden lógico: `date`, `price`, `source`.
+10. **CSV Reader** → carga el **histórico previo** (`data/processed/sulfur_prices.csv`) para evitar duplicados cuando se añaden nuevas filas.
+11. **String to Date&Time** (histórico) → asegura que la columna de fecha del histórico también sea **Local Date** y comparable.
+12. **Reference Row Filter** → deja **solo los registros nuevos** comparando por `date` frente al histórico (evita duplicados).
+13. **CSV Writer** → exporta/actualiza la serie consolidada en `/data/processed/sulfur_prices.csv` (append o overwrite según configuración).
+
 
 ### 2) `sulfur_news.knwf`
 
 **Bloques:**
 
-1. **GET Request** → GDELT (`mode=artlist`, `format=json`, `maxrecords` controlado).
-2. **JSON to Table** / **JSON Path** → expandir array `articles`.
-3. **String Manipulation (Multi Column)** → `strip()` espacios, normalizar idioma.
-4. **Regex Extractor** → dominio de `url` → `source`.
-5. **Row Filter** → incluir solo agro/fertilizantes (consulta o palabras clave secundarias).
-6. **Duplicate Row Filter** → por `url` o `title+date`.
-7. **Rule Engine** → *scoring* sencillo de relevancia por términos (p.ej. +1 “fertilizer”, +1 “agriculture”, -1 “battery”).
-8. **CSV/JSON Writer** → `/data/processed/sulfur_news.json` y `.csv`.
+1. **Web Interaction Start (Labs)** → inicializa la sesión del navegador (Selenium) para habilitar la carga dinámica de los portales de noticias relacionados con el azufre.
+2. **Navigator (Labs)** → abre la página de listados de artículos (por ejemplo, en SunSirs u otras fuentes de fertilizantes) y espera a que el contenido HTML se renderice completamente.
+3. **Content Retriever (Labs)** → obtiene el código HTML completo del listado de noticias para poder analizarlo mediante expresiones XPath.
+4. **XPath** → extrae los **títulos**, **enlaces (URLs)** y **fechas** de publicación de los artículos.
+5. **String Manipulation** → elimina espacios en blanco, saltos de línea o caracteres no imprimibles en los textos.
+6. **String Manipulation (2)** → normaliza el formato de las fechas (`yyyy-MM-dd`) y asegura que todas las URLs comiencen con `https://`.
+7. **Web Interaction Start (Labs)** (segunda rama) → inicia una nueva sesión Selenium para navegar a las páginas individuales de las noticias.
+8. **Navigator (Labs)** (2) → recorre cada URL obtenida para capturar el texto completo de las noticias y los posibles resúmenes.
+9. **Content Retriever (Labs)** (2) → descarga el HTML renderizado de cada noticia individual.
+10. **XPath** (2) → extrae el cuerpo principal del texto o el resumen de cada noticia.
+11. **XPath** (3)** → recoge información adicional (fuente, categoría o etiquetas del artículo).
+12. **Duplicate Row Filter** → elimina duplicados basándose en `url` o la combinación `title + date`.
+13. **Row Filter** → mantiene únicamente las noticias relevantes sobre azufre en el contexto **agrícola/fertilizante**, filtrando por palabras clave (`sulfur`, `azufre`, `fertilizer`, `agriculture`).
+14. **Column Filter** → conserva solo las columnas finales necesarias (`date`, `title`, `url`, `source`, `summary`).
+15. **Concatenate** → une los datos procedentes de las dos ramas (listado y detalle) en una tabla final consolidada.
+16. **CSV Writer** → exporta el conjunto de noticias limpio y deduplicado a `/data/processed/sulfur_news.csv` (o `.json` si se desea en formato JSON).
+
 
 **Tips útiles**
 
