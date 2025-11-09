@@ -12,26 +12,11 @@ Construir un workflow **KNIME** que:
 
 ---
 
-## 📁 Estructura del repo
-
-```
-knime-sulfur-news/
-├─ README.md                    
-├─ LICENSE                       
-├─ .gitignore
-├─ /workflows/
-│   ├─ sulfur_prices.knwf        
-│   └─ sulfur_news.knwf          
-├─ /data/
-│   ├─ raw/                     
-│   ├─ interim/                 
-│   └─ processed/              
-├─ /docs/
-│   ├─ schema_prices.json      
-│   ├─ schema_news.json          
-│   └─ screenshots/              
-└─ /notebooks/                  
-```
+## 🧱 Estructura del proyecto
+| Componente | Descripción |
+|-------------|-------------|
+| `Reto Buconda.knwf` | Workflow de scraping de precios y noticias. |
+| `Workflow knime.png` | Vista general del workflow. |
 
 ---
 
