@@ -135,5 +135,39 @@ knime-sulfur-news/
 * Si una página devuelve **missing**, valida cabeceras con **GET Request** (User-Agent) y maneja códigos 429/403 con **Wait...** + **Retry**.
 * Logs: añade **Table Writer** a `/data/interim/log_runs.csv` con marca temporal.
 
+
+### 3) Python Script vaderSentiment (opcional)
+
+```
+import pandas as pd
+import numpy as np
+from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
+
+df = input_table_1.copy()
+
+analyzer = SentimentIntensityAnalyzer()
+
+def score_text(t):
+    if not isinstance(t, str) or not t.strip():
+        return {"neg": np.nan, "neu": np.nan, "pos": np.nan, "compound": np.nan}
+    return analyzer.polarity_scores(t)
+
+scores = df["body"].apply(score_text).apply(pd.Series)
+df["vader_neg"] = scores["neg"]
+df["vader_neu"] = scores["neu"]
+df["vader_pos"] = scores["pos"]
+df["vader_compound"] = scores["compound"]
+
+def label(c):
+    if pd.isna(c): return None
+    if c >= 0.05:  return "positive"
+    if c <= -0.05: return "negative"
+    return "neutral"
+
+df["sentiment_label"] = df["vader_compound"].apply(label)
+
+output_table_1 = df
+```
+
 ---
 
