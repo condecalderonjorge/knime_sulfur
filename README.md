@@ -156,3 +156,7 @@ output_table_1 = df
 
 ---
 
+## 📬 Contacto
+**Jorge Conde Calderón**  
+📧 [condecalderonjorge@gmail.com](mailto:condecalderonjorge@gmail.com)  
+🔗 [LinkedIn](https://www.linkedin.com/in/jorge-conde-calderon/)
