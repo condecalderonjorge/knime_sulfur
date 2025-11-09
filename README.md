@@ -121,7 +121,7 @@ Construir un workflow **KNIME** que:
 * Logs: añade **Table Writer** a `/data/interim/log_runs.csv` con marca temporal.
 
 
-### 3) Python Script vaderSentiment (opcional)
+### 3) `Python Script vaderSentiment (opcional)`
 
 ```
 import pandas as pd
